@@ -60,8 +60,17 @@ Response normalization - Error handling - Developer ergonomics
 
 # 4. High-Level SDK Architecture
 
-SDK Core Layer ↓ Transport Layer (Fetch Wrapper) ↓ Request Builder ↓
-Response Normalizer ↓ Cache Layer ↓ Typed Interface Exports
+SDK Core Layer
+      ↓
+Transport Layer (Fetch Wrapper)
+      ↓ 
+Request Builder 
+      ↓
+Response Normalizer 
+      ↓
+Cache Layer 
+      ↓
+Typed Interface Exports
 
 Each layer must be modular and independently testable.
 
