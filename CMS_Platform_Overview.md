@@ -14,11 +14,14 @@ The platform is designed to:
 -   Provide a structured, block-based editor
 -   Enable a visual drag-and-drop page builder
 -   Deliver content through a high-performance public API
--   Operate under a serverless-first deployment model
+-   Operate under a decoupled free-tier deployment model
 -   Scale into a SaaS-ready architecture
 
 This document provides a deeply researched architectural explanation and
 system-level analysis.
+
+Canonical architecture decisions are maintained in
+`CMS_Architecture_Decision_Matrix.md`.
 
 ------------------------------------------------------------------------
 
@@ -73,9 +76,20 @@ Benefits include:
 
 # 3. High-Level System Architecture
 
-Admin Dashboard (Next.js) \| v Backend Core API (Node.js / Express) \|
--------------------------- \| \| PostgreSQL Object Storage \| v Public
-Delivery API (Read-Only) \| v Client Applications (Web / Mobile)
+Control Plane: Admin Dashboard (Next.js 15 on Vercel) → Secured REST
+Calls (Bearer JWT) → Data Plane API (Node.js/Express on Render Free
+Tier)
+
+Data Plane Infrastructure:
+
+-   PostgreSQL (Supabase) with Drizzle and RLS-enforced tenant
+    boundaries
+-   Cloudinary/UploadThing CDN for direct media upload and optimized
+    delivery (metadata persisted in PostgreSQL)
+
+Delivery Path:
+
+Public Delivery API (Read-Only) → Client Applications (Web / Mobile)
 
 This layered structure ensures clean separation of concerns.
 
@@ -103,14 +117,17 @@ state management.
 
 Responsibilities:
 
+-   Decoupled Node.js/Express REST API for all write and management operations
+-   Supabase JWT validation in Express middleware
 -   Multi-tenant request scoping
+-   Forwarding request identity context to PostgreSQL for RLS enforcement
 -   API key validation
--   Content validation
+-   Content validation (Zod-based schemas)
 -   Data persistence
--   Media upload authorization (signed URLs)
 -   Role-based access control
 
-The backend must remain stateless and serverless-compatible.
+The backend remains stateless and deployment-portable for Render Free
+Tier constraints.
 
 ------------------------------------------------------------------------
 
@@ -145,14 +162,31 @@ This modular system prevents monolithic JSON complexity.
 
 ## 4.5 Media Handling Architecture
 
-Media must follow a signed URL upload flow:
+Media follows a Cloudinary/UploadThing integration model:
 
-1.  Admin requests upload authorization
-2.  Backend generates signed upload URL
-3.  Client uploads directly to storage
-4.  Backend stores metadata only
+1.  Admin requests upload authorization from the Express API
+2.  Express returns provider-specific upload signature/token
+3.  Client uploads directly to Cloudinary/UploadThing CDN
+4.  Backend persists asset metadata and references in PostgreSQL
 
-This avoids filesystem dependency and supports serverless environments.
+This removes backend file buffering, offloads transformation workloads,
+and supports free-tier infrastructure efficiency.
+
+------------------------------------------------------------------------
+
+## 4.6 Search Strategy
+
+Search uses PostgreSQL Native Full-Text Search on Supabase for
+cost-efficient, tenant-aware querying.
+
+Implementation model:
+
+-   `tsvector` indexed columns for searchable entities
+-   `GIN` indexes for low-latency lookup
+-   Tenant-scoped `tsquery` execution through the same RLS boundaries
+
+This avoids external search service cost while preserving production
+query capabilities.
 
 ------------------------------------------------------------------------
 
@@ -191,17 +225,17 @@ Multi-tenancy enables:
 
 # 7. Deployment Strategy
 
-## 7.1 Serverless-First
+## 7.1 Decoupled Free-Tier Deployment
 
-Frontend: Deployed as serverless application\
-Backend: Serverless API functions\
-Database: Managed PostgreSQL with pooling\
-Storage: Managed object storage
+Frontend: Vercel-hosted Next.js 15 control plane\
+Backend: Render-hosted Node.js/Express data plane\
+Database: Supabase PostgreSQL with connection pooling\
+Media: Cloudinary/UploadThing CDN with metadata in PostgreSQL
 
 Key considerations:
 
 -   Connection pooling required
--   Avoid long-running processes
+-   Handle free-tier cold starts with health-check keep-alives
 -   Stateless API design
 
 ------------------------------------------------------------------------
@@ -232,7 +266,7 @@ Requires:
 1.  Content transformation complexity
 2.  Page builder state explosion
 3.  Versioning workflow management
-4.  Serverless database exhaustion
+4.  Connection pool exhaustion under burst load
 5.  Large JSON rendering performance
 
 These areas require deliberate architectural planning.
@@ -272,7 +306,7 @@ It demonstrates mastery of:
 -   State isolation
 -   API architecture
 -   Multi-tenant design
--   Serverless infrastructure
+-   Cloud-native deployment constraints
 -   Structured content modeling
 
 ------------------------------------------------------------------------

@@ -27,6 +27,9 @@ The SDK must provide:
 This blueprint is structured as a production-grade engineering
 specification.
 
+Canonical architecture decisions are maintained in
+`CMS_Architecture_Decision_Matrix.md`.
+
 ------------------------------------------------------------------------
 
 # 2. Architectural Positioning
@@ -281,8 +284,7 @@ Requirements:
 -   Fetch-based transport only
 -   ESM-compatible output
 
-This ensures compatibility with edge platforms and serverless
-environments.
+This ensures compatibility with edge platforms and cloud runtimes.
 
 ------------------------------------------------------------------------
 

@@ -56,10 +56,10 @@ who require scalable, extensible, and structured content infrastructure.
 
 ### 5. Media Management System
 
--   Signed URL upload flow
--   Direct object storage integration
+-   Cloudinary/UploadThing direct upload flow
+-   CDN-first media delivery with provider optimization
 -   Metadata tracking
--   Serverless-compatible architecture
+-   Stateless backend integration
 
 ### 6. Public Delivery API
 
@@ -89,12 +89,16 @@ who require scalable, extensible, and structured content infrastructure.
 
 ## High-Level Architecture
 
-Admin Dashboard (Next.js) ↓ Backend Core API (Node.js) ↓
--------------------------------- \| \| PostgreSQL Object Storage ↓
-Public Delivery API ↓ Client Applications / SDK
+The platform uses a decoupled architecture:
 
-Control Plane (SaaS Governance) operates alongside but separate from
-content delivery.
+Control Plane (Next.js 15 on Vercel) → Secured REST Calls (Bearer JWT) → Data Plane (Node.js/Express on Render Free Tier) → PostgreSQL (Supabase) + Cloudinary/UploadThing
+
+Request flow:
+
+1.  The client authenticates through Supabase Auth and receives a JWT.
+2.  Next.js sends API requests to Express with `Authorization: Bearer <jwt>`.
+3.  Express middleware validates the token, resolves tenant context, and executes domain logic through Drizzle against PostgreSQL.
+4.  Public delivery remains read-optimized while media is served through CDN-backed assets.
 
 ------------------------------------------------------------------------
 
@@ -106,24 +110,38 @@ content delivery.
 -   Stateless services
 -   Horizontal scalability
 -   Immutable content revisions
--   Serverless-first compatibility
+-   Cloud-native deployment compatibility
 -   Multi-layer tenant isolation
 
 ------------------------------------------------------------------------
 
 ## Technology Stack
 
-Frontend: - Next.js (Admin Dashboard) - React-based Page Builder &
-Editor
+Frontend (Control Plane):
+- Next.js 15 (App Router)
+- Tailwind CSS
+- Shadcn/UI
+- Hosted on Vercel
 
-Backend: - Node.js / Express - Drizzle ORM (or equivalent) - PostgreSQL
+Backend (Data Plane):
+- Node.js
+- Express.js
+- Zod validation
+- Hosted on Render Free Tier
 
-Storage: - Object storage (S3-compatible)
+Database:
+- PostgreSQL (Supabase)
+- Drizzle ORM
 
-Deployment: - Serverless-first architecture - CDN-enabled content
-delivery
+Auth:
+- Supabase Auth (JWT)
+- Row Level Security (RLS)
 
-SDK: - TypeScript - Fetch-based transport - Edge-runtime compatible
+Media:
+- Cloudinary/UploadThing (auto-optimized CDN delivery)
+
+Editor:
+- Tiptap (headless)
 
 ------------------------------------------------------------------------
 
@@ -144,8 +162,8 @@ integration
 
 Phase 2: - Page builder engine - Media management - Versioning workflow
 
-Phase 3: - SaaS billing integration - Usage metering - Feature flags -
-SDK release
+Phase 3: - Advanced billing models - Usage metering hardening - Feature
+flags - SDK release
 
 Phase 4: - Enterprise scaling - Observability enhancements - Performance
 optimization - Plugin ecosystem
@@ -168,7 +186,7 @@ optimization - Plugin ecosystem
 
 -   Role-Based Access Control (RBAC)
 -   Scoped API keys
--   Signed upload expiration
+-   Provider-issued upload signature expiration
 -   Input validation
 -   Rate limiting
 -   Lifecycle-based tenant enforcement
@@ -194,6 +212,7 @@ This repository includes formal documentation covering:
 -   Technical Architecture Deep Dive
 -   Enterprise SaaS Blueprint
 -   Feature-Based System Design
+-   `CMS_Architecture_Decision_Matrix.md` (canonical source of truth)
 -   SDK Architecture Blueprint
 
 ------------------------------------------------------------------------
