@@ -95,18 +95,21 @@
 - Content list/filter/create/edit UI.
 - Tiptap headless editor integration.
 - Structured JSON serialization and validation feedback.
+- **Read-Only Content Renderer**: A React component to render the structured JSON content for preview and public views.
 
 **Implementation Tasks**
 
 - Build content CRUD screens with optimistic UX where safe.
 - Add Tiptap editor with required nodes (text, image, embed, callout).
 - Persist and retrieve normalized structured JSON through backend APIs.
+- Implement the read-only renderer to visualize the JSON output.
 
 **Verification Criteria**
 
 - Create/edit/delete operations work per tenant scope.
 - Editor state round-trips without structural corruption.
 - Validation and API errors surface actionable messages.
+- Renderer correctly displays all supported block types.
 
 **Exit Criteria**
 

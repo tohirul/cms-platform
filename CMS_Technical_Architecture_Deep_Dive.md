@@ -111,11 +111,10 @@ Enforcement model:
 - JWT claims are propagated as request-scoped database context.
 - RLS policies enforce tenant/user boundaries at the data layer.
 - Application-layer checks in Express provide defense-in-depth.
-- Request-scoped transaction context sets `app.tenant_id`,
-  `app.user_id`, and `app.role` before query execution.
-- Transaction boundaries clear context to prevent pooled-connection
-  context leakage.
-- Repository operations without scoped context are rejected.
+- **Mandatory Transaction Wrapper**: Access must use a custom repository pattern or Drizzle ORM middleware to strictly enforce `app.tenant_id` session setting.
+- The wrapper executes `set_config('app.tenant_id', ...)` within the transaction before any query.
+- Raw queries or direct DB access bypassing this wrapper are strictly prohibited to prevent developer error.
+- Transaction boundaries clear context to prevent pooled-connection context leakage.
 
 This model prevents cross-tenant access even if an application query is
 mis-scoped.

@@ -37,12 +37,14 @@
 - Express app bootstrap with config management and structured logging.
 - Centralized error model and request correlation IDs.
 - Health endpoint (`GET /health`) for keep-alive and uptime checks.
+- **Safe Query Transaction Wrapper**: A helper function (e.g., `safeQuery` or `withRls`) that wraps Drizzle operations in a transaction and executes `set_config('app.tenant_id', ...)` to ensure RLS policies work.
 
 **Implementation Tasks**
 
 - Create app entrypoint, router mounting, and middleware order.
 - Add env validation and config loading.
 - Add global error handler and consistent API error responses.
+- Implement the RLS transaction wrapper to guarantee tenant context is set before any database query.
 
 **Verification Criteria**
 
@@ -82,6 +84,34 @@
 **Exit Criteria**
 
 - Persistence layer enforces isolation independent of app logic.
+
+---
+
+## Phase B2.5: Demo Data Seeding
+
+**Type**: Data / Onboarding  
+**Estimated**: 4-6 hours
+
+**Deliverables**
+
+- Robust seeding script (`npm run seed`) to populate the CMS.
+- "Agency", "SaaS", and "Blog" demo tenants with distinct content types.
+- Dummy users, content entries, and revisions for each tenant.
+
+**Implementation Tasks**
+
+- Create seed data JSON files for multiple tenant archetypes.
+- Implement a seeding utility using the `safeQuery` wrapper to insert data with correct RLS context.
+- Ensure idempotent execution (don't duplicate data on re-runs).
+
+**Verification Criteria**
+
+- Database is populated with rich, realistic data for demos.
+- Frontend dashboard shows meaningful content immediately after setup.
+
+**Exit Criteria**
+
+- Resume demo environment is never empty.
 
 ---
 
