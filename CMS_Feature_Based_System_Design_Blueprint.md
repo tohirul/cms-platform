@@ -43,9 +43,12 @@ The platform consists of the following primary feature domains:
 13. Observability & Audit Logging
 14. Security & Rate Limiting
 15. SDK & Developer Experience
-
-Each section below describes the complete system design for that
-feature.
+16. **Hooks System (Extensibility)**
+17. **Background Job Queue**
+18. **Multi-Language (i18n)**
+19. **Pluggable Email Engine**
+20. **Transients (Caching)**
+21. **Immutable Boot Modules (mu-plugins)**
 
 Cross-cutting inheritance rules:
 
@@ -471,7 +474,135 @@ footprint
 
 ------------------------------------------------------------------------
 
-# 18. System-Wide Non-Functional Requirements
+# 18. Hooks System (Phase 5 - Extensibility Core)
+
+## Functional Scope
+
+-   Event actions (onContentPublish, onUserRegister, etc.)
+-   Filter interception (modify payloads before DB/response)
+-   Modular plugin registration
+
+## Architecture
+
+```typescript
+// HookRegistry pattern
+interface HookRegistry {
+  doAction(action: string, payload: any): Promise<void>;
+  addAction(action: string, callback: HookCallback, priority?: number): void;
+  applyFilters(filter: string, value: any, context: HookContext): Promise<any>;
+  addFilter(filter: string, callback: FilterCallback, priority?: number): void;
+}
+```
+
+- Priority-based execution (lower = earlier)
+- Async/await for all hooks
+- /system-modules/ for immutable boot modules
+- /plugins/ for user-installable modules
+
+## Dependencies
+
+- Phase 10 Job Queue (for async webhook dispatch)
+- Phase 24 Email Engine (hooks can modify email payload)
+
+------------------------------------------------------------------------
+
+# 19. Background Job Queue (Phase 10 - WP-Cron Alternative)
+
+## Functional Scope
+
+-   Scheduled content publishing
+-   Webhook dispatch
+-   Batch email processing
+-   Report generation
+
+## Architecture
+
+- PostgreSQL-backed (no external Redis required)
+- `FOR UPDATE SKIP LOCKED` for concurrent workers
+- Job states: pending, running, completed, failed
+- Retry with exponential backoff
+
+```sql
+UPDATE job_queue
+SET status = 'running', started_at = NOW()
+WHERE id = (
+  SELECT id FROM job_queue
+  WHERE status = 'pending' AND scheduled_at <= NOW()
+  ORDER BY scheduled_at ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING *;
+```
+
+------------------------------------------------------------------------
+
+# 20. Multi-Language & Content Localization (Phase 11)
+
+## Functional Scope
+
+-   Single canonical content row with locale keys in JSONB
+-   Sub-path routing (/en/, /bn/, etc.)
+-   Locale-aware content API
+
+## Architecture
+
+- Content JSONB stores: `{ "en": { "title": "..." }, "bn": { "title": "..." } }`
+- Next.js App Router `[lang]` dynamic segment
+- API filters by `locale` query parameter
+- Fallback locale for missing translations
+
+------------------------------------------------------------------------
+
+# 21. Pluggable Email Engine (Phase 24)
+
+## Functional Scope
+
+-   Central email utility (cms.sendEmail())
+-   Provider adapter pattern
+-   Template engine with hook integration
+
+## Architecture
+
+- Adapters: SMTP, AWS SES, Resend
+- React Email for HTML templates
+- Hook integration: modules can intercept/modify email payload
+
+------------------------------------------------------------------------
+
+# 22. Expiring Key-Value Store (Phase 27 - Transients API)
+
+## Functional Scope
+
+-   Cache expensive API responses
+-   Rate limit token buckets
+-   Temporary data storage
+
+## Architecture
+
+- transients table: key (PK), value (JSONB), expiration_time
+- Helper functions: setTransient(), getTransient(), deleteTransient()
+- Background cleanup via Job Queue
+
+------------------------------------------------------------------------
+
+# 23. Immutable Boot Modules (Phase 28 - mu-plugins)
+
+## Functional Scope
+
+-   Enterprise security enforcement
+-   Network-wide policy application
+-   Required logging/monitoring
+
+## Architecture
+
+- /system-modules/ directory
+- Auto-loaded before standard module registry
+- Cannot be disabled by tenant admins
+
+------------------------------------------------------------------------
+
+# 24. System-Wide Non-Functional Requirements
 
 -   Stateless services
 -   Horizontal scalability

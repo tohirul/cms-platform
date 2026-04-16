@@ -260,6 +260,99 @@
 
 ---
 
+## Phase B8: Hooks System & Extensibility (Phase 5)
+
+**Type**: API / Core  
+**Estimated**: 8-12 hours
+
+**Deliverables**
+
+- HookRegistry with Event Emitter pattern
+- Filter registry with payload interception
+- Modular plugin directory structure
+- Hook integration for audit logging, webhooks, emails
+
+**Implementation Tasks**
+
+- Create HookRegistry class with addAction/doAction/addFilter/applyFilters methods
+- Implement priority-based hook execution
+- Build /system-modules/ auto-load mechanism
+- Integrate hooks into existing content API for audit trail
+
+**Verification Criteria**
+
+- Actions fire on content publish/update/delete
+- Filters modify output payloads correctly
+- Modules auto-register on boot
+
+**Exit Criteria**
+
+- Extensibility framework in place for future plugins
+
+---
+
+## Phase B9: Job Queue & Background Processing (Phase 10)
+
+**Type**: Worker  
+**Estimated**: 8-12 hours
+
+**Deliverables**
+
+- PostgreSQL job_queue table
+- Node.js worker process with FOR UPDATE SKIP LOCKED
+- Job status admin dashboard
+- Scheduled publishing via job queue
+
+**Implementation Tasks**
+
+- Create job_queue schema (id, payload, status, attempts, scheduled_at, started_at, completed_at)
+- Implement worker polling logic
+- Build retry mechanism with exponential backoff
+- Create admin UI for job monitoring
+
+**Verification Criteria**
+
+- Multiple workers can process jobs concurrently without race conditions
+- Failed jobs retry correctly
+- Scheduled posts publish at specified time
+
+**Exit Criteria**
+
+- Background processing system operational
+
+---
+
+## Phase B10: Multi-Language & RSS (Phase 11)
+
+**Type**: API  
+**Estimated**: 6-8 hours
+
+**Deliverables**
+
+- i18n support with locale keys in JSONB
+- [lang] dynamic routing
+- RSS/Atom feed generation
+- Public API locale filtering
+
+**Implementation Tasks**
+
+- Add locale field to content schema
+- Implement [lang]/[...slug] routing
+- Create /feed.xml route handler
+- Add locale parameter to content API
+
+**Verification Criteria**
+
+- Content returns correct locale based on URL
+- RSS feed generates valid XML
+- API filtering works by locale
+
+**Exit Criteria**
+
+- i18n and syndication features operational
+
+---
+
 ## 4. Core API Surface (Initial)
 
 - `GET /health`

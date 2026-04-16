@@ -193,6 +193,21 @@ extensibility without modifying core engine logic.
 This removes backend file buffering and offloads media processing CPU
 from the Node.js/Express runtime.
 
+**Resolution Note**: CMS-Feature.md Phase 2 suggests using Next.js `<Image />`
+component for on-the-fly optimization. This architecture uses
+Cloudinary/UploadThing instead because:
+- Transformations happen at CDN edge (closer to user, faster)
+- Zero origin CPU overhead for image processing
+- Built-in format optimization (WebP/AVIF) without origin work
+- Superior for high-traffic CMS workloads
+
+## 8.2 In-Browser Image Editor (Phase 12)
+
+- Canvas-based frontend cropping/rotation using react-image-crop
+- Backend endpoint to process transformations via Sharp
+- "Restore Original" feature storing reference to unmodified file
+- CDN cache invalidation on edits
+
 ---
 
 # 9. Public Delivery API Architecture
@@ -374,7 +389,152 @@ The layered architecture supports these evolutions.
 
 ---
 
-# 16. Engineering Maturity Level
+# 16. Phase 5: Hooks System (Extensibility Core)
+
+**Status**: PLANNED (Critical for WordPress feature parity)
+
+## 16.1 Event Hooks (WordPress add_action equivalent)
+
+```typescript
+// HookRegistry pattern
+interface HookRegistry {
+  doAction(action: string, payload: any): Promise<void>;
+  addAction(action: string, callback: HookCallback): void;
+}
+```
+
+Core actions to implement:
+- `onContentCreate` - When new content is created
+- `onContentPublish` - When content is published
+- `onContentUpdate` - When content is modified
+- `onContentDelete` - When content is deleted
+- `onUserRegister` - When new user signs up
+- `onUserLogin` - When user authenticates
+- `onFormSubmit` - When form is submitted
+
+## 16.2 Filters (WordPress add_filter equivalent)
+
+```typescript
+interface FilterRegistry {
+  applyFilters(filter: string, value: any, context: HookContext): Promise<any>;
+  addFilter(filter: string, callback: FilterCallback): void;
+}
+```
+
+Core filters:
+- `content_output` - Modify rendered content
+- `seo_metadata` - Modify SEO tags before rendering
+- `email_template` - Modify email before sending
+- `api_response` - Modify API response payload
+
+## 16.3 Modular Plugin Architecture
+
+```
+/system-modules/        # Immutable boot modules (Phase 28)
+/plugins/                # User-installable plugins (auto-registered)
+/modules/                # Core feature modules
+```
+
+Each module registers hooks in its entry point. The HookRegistry executes all registered callbacks in priority order.
+
+---
+
+# 17. Phase 10: Database-Backed Job Queue
+
+**Status**: PLANNED (WP-Cron alternative)
+
+## 17.1 Architecture
+
+- `job_queue` table: id, payload (JSONB), status, attempts, scheduled_at, started_at, completed_at
+- Node.js worker process polls with `FOR UPDATE SKIP LOCKED`
+- Admin dashboard for job status monitoring
+- Used for: scheduled publishing, webhook dispatch, batch emails, report generation
+
+## 17.2 Concurrent Worker Safety
+
+```sql
+UPDATE job_queue
+SET status = 'running', started_at = NOW()
+WHERE id = (
+  SELECT id FROM job_queue
+  WHERE status = 'pending' AND scheduled_at <= NOW()
+  ORDER BY scheduled_at ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+RETURNING *;
+```
+
+---
+
+# 18. Phase 11: Content Syndication & i18n
+
+## 18.1 RSS/Atom Feed Generation
+
+- `/feed.xml` route handler
+- Query published content_nodes
+- Map to RSS 2.0 XML structure
+- Cached with revalidate timers
+
+## 18.2 Multi-Language (i18n)
+
+**Resolution Note**: CMS-Feature.md Phase 11 specifies storing translations
+in single row with locale keys in JSONB. This architecture implements:
+
+- Single canonical content_node per locale key in JSONB
+- Next.js App Router `[lang]` dynamic segment
+- Content API filters by `locale` parameter
+
+---
+
+# 19. Phase 24: Pluggable Email Engine
+
+**Status**: PLANNED
+
+## 19.1 Architecture
+
+- `cms.sendEmail()` - Central email utility (not hardcoded nodemailer)
+- Adapter pattern for provider switching (SMTP, AWS SES, Resend)
+- React Email for templating
+- Hook integration: modules can intercept email payload
+
+---
+
+# 20. Phase 27: Expiring Key-Value Store (Transients API)
+
+**Status**: PLANNED (Alternative to WordPress Transients)
+
+## 20.1 Architecture
+
+- `transients` table: key (PK), value (JSONB), expiration_time
+- Helper functions:
+  - `setTransient(key, value, ttlSeconds)` - Insert/update with expiry
+  - `getTransient(key)` - Return value if not expired, else null
+  - `deleteTransient(key)` - Manual invalidation
+- Background cron job cleans expired rows (Phase 10 job queue)
+
+## 20.2 Use Cases
+
+- Cache expensive API responses (e.g., GitHub repo stats)
+- Store computed aggregates
+- Rate limit token buckets
+
+---
+
+# 21. Phase 28: Immutable Boot Modules (mu-plugins)
+
+**Status**: PLANNED
+
+## 21.1 Architecture
+
+- `/system-modules/` directory in Node.js backend
+- Auto-loaded before standard module registry
+- Used for: security enforcement, network-wide policies, required logging
+- Cannot be disabled by tenant admins
+
+---
+
+# 22. Engineering Maturity Level
 
 This architecture demonstrates:
 
@@ -384,6 +544,7 @@ This architecture demonstrates:
 - Structured content modeling
 - Scalable stateless deployment alignment
 - Extensible block system design
+- Hook-based plugin architecture
 
 It represents production-grade systems engineering.
 
